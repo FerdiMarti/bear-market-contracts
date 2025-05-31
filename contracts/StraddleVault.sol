@@ -125,7 +125,7 @@ contract StraddleVault is ERC4626, Ownable {
         return premium;
     }
 
-    function afterDeposit(uint256 assets, uint256) internal override {
+    function afterDeposit(uint256 assets, uint256) internal {
         _afterDeposit(assets);
     }
 
