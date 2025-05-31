@@ -15,6 +15,7 @@
     },
     "scripts": {
         "getusd": "npx hardhat get-usdc --network localhost",
-        "checkusd": "npx hardhat check-usdc --network localhost"
+        "checkusd": "npx hardhat check-usdc --network localhost",
+        "copytypes": "cp -r typechain-types/interfaces ../bear-market-frontend/types/contract-types"
     }
 }
