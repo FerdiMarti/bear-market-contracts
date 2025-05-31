@@ -58,6 +58,8 @@ contract OptionTokenManager is Ownable {
             collateral
         );
 
+        newOptionToken.transferOwnership(msg.sender);
+
         address optionTokenAddress = address(newOptionToken);
         isOptionToken[optionTokenAddress] = true;
         deployedOptions.push(optionTokenAddress);
