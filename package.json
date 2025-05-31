@@ -16,6 +16,7 @@
     "scripts": {
         "getusd": "npx hardhat get-usdc --network localhost",
         "checkusd": "npx hardhat check-usdc --network localhost",
+        "deploymanager": "npx hardhat run scripts/deploy-option-token-manager.ts --network localhost",
         "copytypes": "cp -r typechain-types/interfaces ../bear-market-frontend/types/contract-types/ && cp typechain-types/common.ts ../bear-market-frontend/types/contract-types"
     }
 }
