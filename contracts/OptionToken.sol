@@ -17,6 +17,7 @@ enum OptionType {
 contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     OptionType public optionType;
     string public pythAssetId;
+    uint256 public startPrice; //price at which the option was created; Just for informative purposes
     uint256 public strikePrice;
     uint256 public expiration;
     uint256 public executionWindowSize; // Time window for execution in seconds
@@ -58,7 +59,8 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         uint256 _executionWindowSize, // Time window for execution in seconds
         uint256 _premium,
         uint256 _amount,
-        address _paymentToken
+        address _paymentToken,
+        uint256 _collateral //minter decides how much collateral is used overall, capping the payout per token
     ) 
         ERC20(string.concat("Option-", _pythAssetId),"OPT")
         Ownable(msg.sender)
@@ -71,9 +73,18 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         premium = _premium;
         paymentToken = IERC20(_paymentToken);
         
-        // Calculate collateral based on current asset price
-        uint256 currentPrice = getAssetPrice();
-        collateral = currentPrice * _amount;
+        // Set collateral and start price
+        startPrice = getAssetPrice();
+        collateral = _collateral;
+
+        //minimum collateral is 1x start price per token
+        require(collateral >= startPrice * _amount, "Collateral must be at least 1x start price per token");
+        
+        // Transfer collateral from owner to contract
+        require(
+            paymentToken.transferFrom(msg.sender, address(this), collateral),
+            "Collateral transfer failed"
+        );
         
         // Mint tokens to the contract itself
         _mint(address(this), _amount);
@@ -145,13 +156,23 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
             if (currentPrice > strikePrice) {
                 // Calculate payout based on holder's share of total supply
                 uint256 priceDifference = currentPrice - strikePrice;
-                payout = (priceDifference * holderBalance * collateral) / (totalSupply() * currentPrice);
+                uint256 maxPayoutPerToken = collateral / totalSupply(); // Maximum payout per token
+                uint256 calculatedPayout = (priceDifference * holderBalance * collateral) / (totalSupply() * currentPrice);
+                
+                // Cap the payout at the maximum per token
+                payout = calculatedPayout > (maxPayoutPerToken * holderBalance) ? 
+                    maxPayoutPerToken * holderBalance : calculatedPayout;
             }
         } else { // PUT
             if (currentPrice < strikePrice) {
                 // Calculate payout based on holder's share of total supply
                 uint256 priceDifference = strikePrice - currentPrice;
-                payout = (priceDifference * holderBalance * collateral) / (totalSupply() * currentPrice);
+                uint256 maxPayoutPerToken = collateral / totalSupply(); // Maximum payout per token
+                uint256 calculatedPayout = (priceDifference * holderBalance * collateral) / (totalSupply() * currentPrice);
+                
+                // Cap the payout at the maximum per token
+                payout = calculatedPayout > (maxPayoutPerToken * holderBalance) ? 
+                    maxPayoutPerToken * holderBalance : calculatedPayout;
             }
         }
         
