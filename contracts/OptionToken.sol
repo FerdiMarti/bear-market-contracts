@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 enum OptionType {
     CALL,
@@ -16,7 +19,8 @@ enum OptionType {
 //Cash settlement
 contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     OptionType public optionType;
-    string public pythAssetId;
+    bytes32 public pythAssetId;
+    address public pythAddress;
     uint256 public startPrice; //price at which the option was created; Just for informative purposes
     uint256 public strikePrice;
     uint256 public expiration;
@@ -53,7 +57,8 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     
     constructor(
         OptionType _optionType,
-        string memory _pythAssetId,
+        bytes32 _pythAssetId,
+        address _pythAddress,
         uint256 _strikePrice,
         uint256 _expiration,
         uint256 _executionWindowSize, // Time window for execution in seconds
@@ -62,11 +67,12 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         address _paymentToken,
         uint256 _collateral //minter decides how much collateral is used overall, capping the payout per token
     ) 
-        ERC20(string.concat("Option-", _pythAssetId),"OPT")
+        ERC20("Roin Option","rOPT")
         Ownable(msg.sender)
     {
         optionType = _optionType;
         pythAssetId = _pythAssetId;
+        pythAddress = _pythAddress;
         strikePrice = _strikePrice;
         expiration = _expiration;
         executionWindowSize = _executionWindowSize;
@@ -74,7 +80,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         paymentToken = IERC20(_paymentToken);
         
         // Set collateral and start price
-        startPrice = getAssetPrice();
+        startPrice = _getAssetPrice();
         collateral = _collateral;
 
         //minimum collateral is 1x start price per token
@@ -88,13 +94,6 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         
         // Mint tokens to the contract itself
         _mint(address(this), _amount);
-    }
-    
-    // Dummy function to simulate oracle price feed
-    function getAssetPrice() public view returns (uint256) {
-        // In a real implementation, this would call the Pyth oracle
-        // For now, we'll return a dummy price
-        return 1000; // Dummy price of 1000
     }
     
     function purchaseOption(uint256 amount) external onlyBeforeExpiration {
@@ -131,25 +130,21 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
 
         // Burning could also happen after all tokens are executed if there was a leftover
         // so we need to check if all tokens have been executed
-        checkFullyExecuted();
+        _checkFullyExecuted();
         
         emit UnsoldTokensBurned(owner(), amount, collateralToReturn);
+    }
+
+    function fixPrice() external {
+        _fixPrice();
     }
     
     function executeOption() external onlyDuringExecutionWindow onlyNotFullyExecuted nonReentrant {
         uint256 holderBalance = balanceOf(msg.sender);
         require(holderBalance > 0, "No tokens to execute");
         
-        uint256 currentPrice;
-        if (!priceFixed) {
-            currentPrice = getAssetPrice();
-            executionPrice = currentPrice;
-            priceFixed = true;
-            emit ExecutionPriceFixed(currentPrice);
-        } else {
-            currentPrice = executionPrice;
-        }
-        
+        _fixPrice();
+        uint256 currentPrice = executionPrice;
         uint256 payout = 0;
         
         if (optionType == OptionType.CALL) {
@@ -189,13 +184,36 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         
         emit OptionExecuted(msg.sender, payout, holderBalance);
 
-        checkFullyExecuted();
+        _checkFullyExecuted();
     }
 
-    function checkFullyExecuted() internal {
+    function _checkFullyExecuted() internal {
         if (totalSupply() == 0) {
             isFullyExecuted = true;
             emit FullyExecuted();
         }
+    }
+
+    // Get the current price of the asset from Pyth
+    function _getAssetPrice() internal view returns (uint256) {
+        IPyth pyth = IPyth(pythAddress);
+        PythStructs.Price memory currentBasePrice = pyth.getPriceNoOlderThan(pythAssetId, 60);
+        int64 price = currentBasePrice.price;
+        require(price > 0, "Invalid price from Oracle");
+
+        //convert to payment token decimals
+        uint8 paymentDecimals = IERC20Metadata(address(paymentToken)).decimals();
+        int32 expo = currentBasePrice.expo;
+        int32 scaleFactor = int32(uint32(paymentDecimals)) - (-expo);
+        uint256 priceInPaymentDecimals = uint256(uint64(price)) * uint256(10 ** uint32(scaleFactor));
+
+        return priceInPaymentDecimals;
+    }
+
+    function _fixPrice() internal onlyDuringExecutionWindow onlyNotFullyExecuted nonReentrant {
+        if (priceFixed) return;
+        executionPrice = _getAssetPrice();
+        priceFixed = true;
+        emit ExecutionPriceFixed(executionPrice);
     }
 }
