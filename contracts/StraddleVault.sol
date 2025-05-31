@@ -67,19 +67,44 @@ contract StraddleVault is ERC4626, Ownable {
     }
 
     function _afterDeposit(uint256 assets) internal {
+        collateralAsset.approve(address(cdpManager), assets);
+        cdpManager.depositCollateral(address(collateralAsset), assets);
 
+        // Borrow NECT (debtAsset) based on fixed 150% CR
+        uint256 borrowAmount = (assets * 1e18) / 150e16; // e.g., 66.66% of value
+        cdpManager.borrow(address(debtAsset), borrowAmount);
     }
 
     function _writeStraddle(uint256 callAmount, uint256 putAmount) internal {
+        uint256 strike = priceOracle.getPrice();
+        uint256 expiry = block.timestamp + ROLL_INTERVAL;
+        uint256 T = ROLL_INTERVAL / 365 days; // time to expiry in years (approx 0.25)
 
+        uint256 callPremium = _blackScholesPrice(OptionType.CALL, strike, strike, T, IV_BPS);
+        uint256 putPremium = _blackScholesPrice(OptionType.PUT, strike, strike, T, IV_BPS);
+
+        collateralAsset.approve(address(optionsProtocol), callAmount);
+        debtAsset.approve(address(optionsProtocol), putAmount);
+
+        optionsProtocol.createOption(0, address(collateralAsset), strike, expiry, callPremium, callAmount, address(debtAsset));
+        optionsProtocol.createOption(1, address(collateralAsset), strike, expiry, putPremium, putAmount, address(debtAsset));
     }
 
     function rolloverStraddles() external {
+        require(block.timestamp >= lastRollTime + ROLL_INTERVAL, "Too early");
+        lastRollTime = block.timestamp;
 
+        collectPremiums(); // Auto-compound premiums before new round
+
+        uint256 callCollateral = collateralAsset.balanceOf(address(this));
+        uint256 putCollateral = debtAsset.balanceOf(address(this));
+
+        _writeStraddle(callCollateral, putCollateral);
     }
 
     function collectPremiums() public {
-
+        uint256 collected = optionsProtocol.claimPremiums(address(this));
+        // Premiums stay in contract and are reused in next rollover
     }
 
     // Simplified Black-Scholes premium approximation
@@ -90,7 +115,14 @@ contract StraddleVault is ERC4626, Ownable {
         uint256 timeToExpiry,
         uint256 ivBps
     ) internal pure returns (uint256) {
+        // Basic proportional premium = spot * iv * sqrt(T)
+        // ivBps is in basis points (e.g., 6000 = 60%)
 
+        uint256 iv = (spot * ivBps) / 10000;
+        uint256 sqrtT = Math.sqrt(timeToExpiry * 1e18); // simplified
+        uint256 premium = (iv * sqrtT) / 1e9; // adjust back to 1e18 scale
+
+        return premium;
     }
 
     function afterDeposit(uint256 assets, uint256) internal override {
@@ -99,10 +131,18 @@ contract StraddleVault is ERC4626, Ownable {
 
     // Queued withdrawal system
     function requestWithdrawal(uint256 shares) external {
-
+        require(shares > 0, "Zero shares");
+        _transfer(msg.sender, address(this), shares);
+        withdrawalQueue.push(WithdrawalRequest({ user: msg.sender, shares: shares }));
     }
 
     function processWithdrawals() external onlyOwner {
-
+        for (uint256 i = 0; i < withdrawalQueue.length; i++) {
+            WithdrawalRequest memory req = withdrawalQueue[i];
+            uint256 assetsToWithdraw = previewRedeem(req.shares);
+            _burn(address(this), req.shares);
+            collateralAsset.transfer(req.user, assetsToWithdraw);
+        }
+        delete withdrawalQueue;
     }
 }
