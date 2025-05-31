@@ -32,6 +32,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     event OptionPurchased(address indexed buyer, uint256 amount);
     event UnsoldTokensBurned(address indexed owner, uint256 amount, uint256 collateralReturned);
     event ExecutionPriceFixed(uint256 price);
+    event FullyExecuted();
     
     modifier onlyBeforeExpiration() {
         require(block.timestamp < expiration, "Option has expired");
@@ -173,6 +174,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     function checkFullyExecuted() internal {
         if (totalSupply() == 0) {
             isFullyExecuted = true;
+            emit FullyExecuted();
         }
     }
 }
