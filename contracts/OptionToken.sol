@@ -37,7 +37,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         _;
     }
     
-    modifier onlyAfterExpiration() {
+    modifier onlyDuringExecutionWindow() {
         require(block.timestamp >= expiration, "Option has not expired yet");
         require(block.timestamp <= expiration + 1 days, "Execution period has ended");
         _;
@@ -117,7 +117,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         emit UnsoldTokensBurned(owner(), amount, collateralToReturn);
     }
     
-    function executeOption() external onlyAfterExpiration onlyNotFullyExecuted nonReentrant {
+    function executeOption() external onlyDuringExecutionWindow onlyNotFullyExecuted nonReentrant {
         uint256 holderBalance = balanceOf(msg.sender);
         require(holderBalance > 0, "No tokens to execute");
         
