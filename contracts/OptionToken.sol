@@ -116,6 +116,10 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
             paymentToken.transfer(owner(), collateralToReturn),
             "Collateral return failed"
         );
+
+        // Burning could also happen after all tokens are executed if there was a leftover
+        // so we need to check if all tokens have been executed
+        checkFullyExecuted();
         
         emit UnsoldTokensBurned(owner(), amount, collateralToReturn);
     }
@@ -162,8 +166,11 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         _burn(msg.sender, holderBalance);
         
         emit OptionExecuted(msg.sender, payout, holderBalance);
-        
-        // Check if all tokens have been executed
+
+        checkFullyExecuted();
+    }
+
+    function checkFullyExecuted() internal {
         if (totalSupply() == 0) {
             isFullyExecuted = true;
         }
