@@ -19,6 +19,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     string public pythAssetId;
     uint256 public strikePrice;
     uint256 public expiration;
+    uint256 public executionWindowSize; // Time window for execution in seconds
     uint256 public premium;
     uint256 public collateral;
     uint256 public totalSold;
@@ -39,7 +40,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     
     modifier onlyDuringExecutionWindow() {
         require(block.timestamp >= expiration, "Option has not expired yet");
-        require(block.timestamp <= expiration + 1 days, "Execution period has ended");
+        require(block.timestamp <= expiration + executionWindowSize, "Execution period has ended");
         _;
     }
     
@@ -53,6 +54,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         string memory _pythAssetId,
         uint256 _strikePrice,
         uint256 _expiration,
+        uint256 _executionWindowSize, // Time window for execution in seconds
         uint256 _premium,
         uint256 _amount,
         address _paymentToken
@@ -64,6 +66,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         pythAssetId = _pythAssetId;
         strikePrice = _strikePrice;
         expiration = _expiration;
+        executionWindowSize = _executionWindowSize;
         premium = _premium;
         paymentToken = IERC20(_paymentToken);
         
