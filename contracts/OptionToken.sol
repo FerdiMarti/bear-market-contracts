@@ -19,7 +19,8 @@ enum OptionType {
 //Cash settlement
 contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     OptionType public optionType;
-    bytes32 public pythAssetId;
+    IERC20 public paymentToken;
+    bytes32 public paymentTokenPythAssetId;
     address public pythAddress;
     uint256 public startPrice; //price at which the option was created; Just for informative purposes
     uint256 public strikePrice;
@@ -31,7 +32,6 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     uint256 public executionPrice;
     bool public priceFixed;
     bool public isFullyExecuted;
-    IERC20 public paymentToken;
     
     event OptionExecuted(address indexed executor, uint256 payout, uint256 burnedAmount);
     event OptionPurchased(address indexed buyer, uint256 amount);
@@ -57,7 +57,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     
     constructor(
         OptionType _optionType,
-        bytes32 _pythAssetId,
+        bytes32 _paymentTokenPythAssetId,
         address _pythAddress,
         uint256 _strikePrice,
         uint256 _expiration,
@@ -71,7 +71,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         Ownable(msg.sender)
     {
         optionType = _optionType;
-        pythAssetId = _pythAssetId;
+        paymentTokenPythAssetId = _paymentTokenPythAssetId;
         pythAddress = _pythAddress;
         strikePrice = _strikePrice;
         expiration = _expiration;
@@ -197,7 +197,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     // Get the current price of the asset from Pyth
     function _getAssetPrice() internal view returns (uint256) {
         IPyth pyth = IPyth(pythAddress);
-        PythStructs.Price memory currentBasePrice = pyth.getPriceNoOlderThan(pythAssetId, 60);
+        PythStructs.Price memory currentBasePrice = pyth.getPriceNoOlderThan(paymentTokenPythAssetId, 60);
         int64 price = currentBasePrice.price;
         require(price > 0, "Invalid price from Oracle");
 
