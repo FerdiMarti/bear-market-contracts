@@ -28,6 +28,14 @@ const config: HardhatUserConfig = {
                 enabled: true,
             },
         },
+        berachain: {
+            url: 'https://rpc.berachain.com',
+            accounts: [process.env.BERACHAIN_PRIVATE_KEY as string],
+        },
+        hedera: {
+            url: 'https://testnet.hashio.io/api',
+            accounts: [process.env.HEDERA_PRIVATE_KEY as string],
+        },
     },
 };
 

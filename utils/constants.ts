@@ -6,7 +6,7 @@ type AddressTypes = {
 
 export const CONTRACT_ADDRESSES: {
     [chain: string]: {
-        mainnet: AddressTypes;
+        mainnet?: AddressTypes;
         testnet?: AddressTypes;
     };
 } = {
@@ -17,6 +17,13 @@ export const CONTRACT_ADDRESSES: {
             PYTH: '0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a',
         },
     },
+    HEDERA: {
+        testnet: {
+            USDC: '',
+            USDC_WHALE: '',
+            PYTH: '0xA2aa501b19aff244D90cc15a4Cf739D2725B5729',
+        },
+    },
 };
 
-export const USED_CONTRACTS = CONTRACT_ADDRESSES.BASE.mainnet;
+export const USED_CONTRACTS = CONTRACT_ADDRESSES.BASE.mainnet as AddressTypes;
