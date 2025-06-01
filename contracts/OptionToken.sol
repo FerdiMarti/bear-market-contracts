@@ -86,6 +86,13 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         //minimum collateral is 1x start price per token
         require(collateral >= startPrice * _amount, "Collateral must be at least 1x start price per token");
         
+        //Check for valid strike price
+        if (optionType == OptionType.CALL) {
+            require(strikePrice >= startPrice, "strike price must be at least start price for CALL");
+        } else {
+            require(strikePrice <= startPrice, "strike price must be at most start price for PUT");
+        }
+        
         // Transfer collateral from owner to contract
         require(
             paymentToken.transferFrom(msg.sender, address(this), collateral),

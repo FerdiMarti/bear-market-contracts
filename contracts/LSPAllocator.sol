@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 // Interface for the option contract with an execution hook
 interface IOption {
     function executeOption() external;
-}
-
-// Minimal ERC20 interface for NECT token interactions
-interface IERC20 {
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function transfer(address to, uint256 amount) external returns (bool);
-    function approve(address spender, uint256 amount) external returns (bool);
 }
 
 // Enum to differentiate between call and put options
