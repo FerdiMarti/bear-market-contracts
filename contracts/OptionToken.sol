@@ -211,7 +211,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
         return priceInPaymentDecimals;
     }
 
-    function _fixPrice() internal onlyDuringExecutionWindow onlyNotFullyExecuted nonReentrant {
+    function _fixPrice() internal virtual onlyDuringExecutionWindow onlyNotFullyExecuted nonReentrant {
         if (priceFixed) return;
         executionPrice = _getAssetPrice();
         priceFixed = true;
