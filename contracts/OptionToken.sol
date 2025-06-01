@@ -93,12 +93,6 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
             require(strikePrice <= startPrice, "strike price must be at most start price for PUT");
         }
         
-        // Transfer collateral from owner to contract
-        require(
-            paymentToken.transferFrom(msg.sender, address(this), collateral),
-            "Collateral transfer failed"
-        );
-        
         // Mint tokens to the contract itself
         _mint(address(this), _amount);
     }
@@ -204,7 +198,7 @@ contract OptionToken is ERC20, Ownable, ERC20Burnable, ReentrancyGuard {
     // Get the current price of the asset from Pyth
     function _getAssetPrice() internal view returns (uint256) {
         IPyth pyth = IPyth(pythAddress);
-        PythStructs.Price memory currentBasePrice = pyth.getPriceNoOlderThan(paymentTokenPythAssetId, 60);
+        PythStructs.Price memory currentBasePrice = pyth.getPriceUnsafe(paymentTokenPythAssetId);
         int64 price = currentBasePrice.price;
         require(price > 0, "Invalid price from Oracle");
 

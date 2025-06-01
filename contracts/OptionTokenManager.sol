@@ -60,6 +60,14 @@ contract OptionTokenManager is Ownable {
 
         newOptionToken.transferOwnership(msg.sender);
 
+        // Transfer collateral from owner to option contract
+        // Has to happen here because spending can only be approved to this manager contract
+        //TODO do initialize in two steps so that we can put this back into the option contract
+        require(
+            IERC20(paymentToken).transferFrom(msg.sender, address(newOptionToken), collateral),
+            "Collateral transfer failed"
+        );
+
         address optionTokenAddress = address(newOptionToken);
         isOptionToken[optionTokenAddress] = true;
         deployedOptions.push(optionTokenAddress);
