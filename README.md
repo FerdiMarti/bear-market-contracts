@@ -59,7 +59,7 @@ npx hardhat run scripts/deploy-option-token-manager.ts --network localhost
 
 - OptionTokenManager: `0x145C87Aeb313C706Be153dF868b7e8B799dd1a79`
 - CollarVault: `0xb36e947059ECD2ec03A48c1D547866cb79BcC5ef`
-- LSPAllocator: ``
+- LSPAllocator: `0x3E6AC6064C83F741E6cB7e3633AccC661a40B948`
 
 ## Architecture
 
