@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./OptionToken.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IBonzoPool.sol";
-import "./interfaces/IBonzoPoolAddressesProvider.sol";
+import "./mock-interfaces/IBonzoPool.sol";
+import "./mock-interfaces/IBonzoPoolAddressesProvider.sol";
 
 contract YieldBearingOptionToken is OptionToken {
     IBonzoPool public immutable bonzoPool;
