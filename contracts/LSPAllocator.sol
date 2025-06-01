@@ -69,7 +69,12 @@ contract LSPAllocator {
         return 0;
     }
 
-    // Allows LSP to actively reclaim idle NECT in emergencies (e.g., prior to offset())
+    /**
+     * @notice This function provides a manual interface for the LSP to reclaim idle NECT liquidity.
+     * While not a direct callback hook, it is designed to be invoked in conjunction with or in anticipation of
+     * calls to LiquidStabilityPool::offset(). This ensures the LSP retains capital efficiency while allowing
+     * the allocator to function independently and safely.
+     */
     function reclaimLiquidity(uint256 amount) external {
         require(msg.sender == lsp, "Only LSP can reclaim");
         require(amount <= totalAllocated, "Insufficient idle NECT");
